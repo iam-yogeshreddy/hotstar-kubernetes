@@ -7,35 +7,35 @@ pipeline {
     }
 
     parameters {
-        string(name: 'action', defaultValue: 'apply', description: 'Terraform action: apply or destroy')
+        choice(name: 'action', choices: ['apply', 'destroy'], description: 'Terraform action: apply or destroy')
     }
 
     stages {
-        stage('Checkout from Git') {                        
+        stage('Checkout from Git') {
             steps {
                 git branch: 'main', credentialsId: 'github-token', url: 'https://github.com/iam-yogeshreddy/hotstar-kubernetes.git'
             }
         }
 
-        stage('Terraform version') {
+        stage('Terraform Version') {
             steps {
                 sh 'terraform --version'
             }
         }
 
-        stage('Terraform init') {
+        stage('Terraform Init') {
             steps {
                 dir('Terraform') {
-                    sh '''
+                    sh """
                     terraform init \
                     -backend-config="access_key=$AWS_ACCESS_KEY_ID" \
                     -backend-config="secret_key=$AWS_SECRET_ACCESS_KEY"
-                    '''
+                    """
                 }
             }
         }
 
-        stage('Terraform validate') {
+        stage('Terraform Validate') {
             steps {
                 dir('Terraform') {
                     sh 'terraform validate'
@@ -43,26 +43,29 @@ pipeline {
             }
         }
 
-        stage('Terraform plan') {
+        stage('Terraform Plan') {
             steps {
                 dir('Terraform') {
-                    sh '''
+                    sh """
                     terraform plan \
                     -var="access_key=$AWS_ACCESS_KEY_ID" \
                     -var="secret_key=$AWS_SECRET_ACCESS_KEY"
-                    '''
+                    """
                 }
             }
         }
 
-        stage('Terraform apply/destroy') {
+        stage('Terraform Apply or Destroy') {
+            when {
+                expression { return params.action == 'apply' || params.action == 'destroy' }
+            }
             steps {
                 dir('Terraform') {
-                    sh '''
-                    terraform ${action} --auto-approve \
+                    sh """
+                    terraform ${params.action} --auto-approve \
                     -var="access_key=$AWS_ACCESS_KEY_ID" \
                     -var="secret_key=$AWS_SECRET_ACCESS_KEY"
-                    '''
+                    """
                 }
             }
         }
